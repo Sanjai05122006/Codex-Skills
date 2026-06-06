@@ -1,9 +1,7 @@
 ---
-
 name: project-context
 description: "Load and respect project-specific documentation before planning or implementation."
--------------------------------------------------------------------------------------------------
-
+---
 # Project Context Skill
 
 This skill runs before implementation begins.

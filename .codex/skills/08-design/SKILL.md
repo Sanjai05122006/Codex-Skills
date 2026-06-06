@@ -1,3 +1,8 @@
+---
+name: design
+description: "Enforce the frontend design system, premium SaaS UX standards, responsive behavior, typography, spacing, authentication layouts, navbar/footer patterns, and Tailwind-based UI consistency."
+---
+
 # Frontend Design System
 
 # Design Skill

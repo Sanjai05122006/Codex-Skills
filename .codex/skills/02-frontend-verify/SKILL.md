@@ -1,6 +1,9 @@
+---
 name: frontend-verify
 description: "Verify Next.js App Router frontend changes for premium SaaS quality: design system token compliance, typography scale, spacing discipline, Server vs Client boundary, Tailwind-only styling, Zod form validation, accessibility, performance patterns for million-user scale, navbar/footer structure, interactive microstates."
 ---
+
+
 # Frontend Verification Skill
 ## Reference Standard
 Premium SaaS baseline: Linear (precision + restraint), Vercel (Geist system + interaction density),
