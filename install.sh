@@ -11,9 +11,13 @@ echo " Installing Codex Skills Workflow"
 echo "========================================"
 echo ""
 
+# Cleanup previous run
+
 if [ -d "$CLONE_DIR" ]; then
 rm -rf "$CLONE_DIR"
 fi
+
+# Clone template repo
 
 git clone --depth 1 "$REPO_URL" "$CLONE_DIR"
 
@@ -21,33 +25,73 @@ echo ""
 echo "Copying workflow files..."
 echo ""
 
+# ------------------------------------------------------------------
+
 # .codex
+
+# ------------------------------------------------------------------
 
 if [ -d "$CLONE_DIR/.codex" ]; then
 cp -r "$CLONE_DIR/.codex" .
 echo "✓ .codex installed"
 fi
 
+# ------------------------------------------------------------------
+
 # .agents
+
+# ------------------------------------------------------------------
 
 if [ -d "$CLONE_DIR/.agents" ]; then
 cp -r "$CLONE_DIR/.agents" .
 echo "✓ .agents installed"
 fi
 
+# ------------------------------------------------------------------
+
 # docs
+
+# ------------------------------------------------------------------
 
 if [ -d "$CLONE_DIR/docs" ]; then
 mkdir -p docs
-
-[ -d "$CLONE_DIR/docs/api" ] && cp -r "$CLONE_DIR/docs/api" docs/
-[ -d "$CLONE_DIR/docs/schema" ] && cp -r "$CLONE_DIR/docs/schema" docs/
-[ -d "$CLONE_DIR/docs/ui" ] && cp -r "$CLONE_DIR/docs/ui" docs/
-
-echo "✓ docs/api installed"
-echo "✓ docs/schema installed"
-echo "✓ docs/ui installed"
+cp -r "$CLONE_DIR/docs/." docs/
+echo "✓ docs installed"
 fi
+
+# ------------------------------------------------------------------
+
+# Project Documentation (copy only if missing)
+
+# ------------------------------------------------------------------
+
+copy_if_missing() {
+local SOURCE="$1"
+local TARGET="$2"
+
+```
+if [ -f "$SOURCE" ] && [ ! -f "$TARGET" ]; then
+    cp "$SOURCE" "$TARGET"
+    echo "✓ $(basename "$TARGET") installed"
+elif [ -f "$TARGET" ]; then
+    echo "→ $(basename "$TARGET") already exists — skipped"
+fi
+```
+
+}
+
+copy_if_missing "$CLONE_DIR/AGENTS.md" "AGENTS.md"
+copy_if_missing "$CLONE_DIR/ARCHITECTURE.md" "ARCHITECTURE.md"
+copy_if_missing "$CLONE_DIR/REQUIREMENTS.md" "REQUIREMENTS.md"
+copy_if_missing "$CLONE_DIR/AGENT_TASKS.md" "AGENT_TASKS.md"
+copy_if_missing "$CLONE_DIR/Backlog.md" "Backlog.md"
+copy_if_missing "$CLONE_DIR/README.md" "README.md"
+
+# ------------------------------------------------------------------
+
+# Cleanup
+
+# ------------------------------------------------------------------
 
 rm -rf "$CLONE_DIR"
 
@@ -56,15 +100,21 @@ echo "========================================"
 echo " Installation Complete"
 echo "========================================"
 echo ""
+
 echo "Installed:"
 echo "  .codex/"
 echo "  .agents/"
-echo "  docs/ui/"
+echo "  docs/"
+
 echo ""
-echo "Project-specific files were NOT modified:"
+echo "Installed if missing:"
 echo "  AGENTS.md"
 echo "  ARCHITECTURE.md"
 echo "  REQUIREMENTS.md"
 echo "  AGENT_TASKS.md"
 echo "  Backlog.md"
+echo "  README.md"
+
+echo ""
+echo "Existing project files were not overwritten."
 echo ""
