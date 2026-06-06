@@ -35,11 +35,17 @@ cp -r "$CLONE_DIR/.agents" .
 echo "✓ .agents installed"
 fi
 
-# docs/ui
+# docs
 
-if [ -d "$CLONE_DIR/docs/ui" ]; then
+if [ -d "$CLONE_DIR/docs" ]; then
 mkdir -p docs
-cp -r "$CLONE_DIR/docs/ui" docs/
+
+[ -d "$CLONE_DIR/docs/api" ] && cp -r "$CLONE_DIR/docs/api" docs/
+[ -d "$CLONE_DIR/docs/schema" ] && cp -r "$CLONE_DIR/docs/schema" docs/
+[ -d "$CLONE_DIR/docs/ui" ] && cp -r "$CLONE_DIR/docs/ui" docs/
+
+echo "✓ docs/api installed"
+echo "✓ docs/schema installed"
 echo "✓ docs/ui installed"
 fi
 
