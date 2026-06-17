@@ -1,107 +1,155 @@
 #!/usr/bin/env bash
 # ============================================================
-#  Claude Code Skills Installer
-#  Repo: https://github.com/Sanjai05122006/Codex-Skills
+# Claude Code — Project Skills Setup
 #
-#  Usage:
-#    curl -fsSL https://raw.githubusercontent.com/Sanjai05122006/Codex-Skills/main/install.sh | bash
+# Usage:
+#   bash install-claude.sh
 #
-#  What it does:
-#    - Clones (or updates) this skills repo to a temp location
-#    - Copies every skill folder into ~/.claude/skills/
-#    - Skips skills that are already up-to-date (idempotent)
+# Downloads the latest skills from GitHub and installs them
+# into .claude/skills in the current project.
 # ============================================================
 
-set -euo pipefail
+set -Eeuo pipefail
 
-# ── Config ────────────────────────────────────────────────
 REPO_URL="https://github.com/Sanjai05122006/Codex-Skills.git"
-SKILLS_DEST="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
-SKILLS_SRC_DIR="skills"          # folder inside the repo that holds skill sub-folders
-BRANCH="main"
-# ──────────────────────────────────────────────────────────
+SKILLS_SRC=".codex/skills"
+SKILLS_DEST=".claude/skills"
 
-# Colours
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
-CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
+BOLD='\033[1m'
+RESET='\033[0m'
 
 info()    { echo -e "${CYAN}ℹ  $*${RESET}"; }
 success() { echo -e "${GREEN}✔  $*${RESET}"; }
 warn()    { echo -e "${YELLOW}⚠  $*${RESET}"; }
 error()   { echo -e "${RED}✖  $*${RESET}" >&2; exit 1; }
 
-echo -e "\n${BOLD}╔══════════════════════════════════════════╗"
-echo -e "║   Claude Code Skills Installer           ║"
-echo -e "╚══════════════════════════════════════════╝${RESET}\n"
+echo
+echo -e "${BOLD}╔══════════════════════════════════════════╗"
+echo -e "║  Claude Code — Project Skills Setup      ║"
+echo -e "╚══════════════════════════════════════════╝${RESET}"
+echo
 
-# ── Prereqs ───────────────────────────────────────────────
-for cmd in git curl; do
-  command -v "$cmd" &>/dev/null || error "'$cmd' is required but not found. Please install it first."
+# ------------------------------------------------------------
+# Check required commands
+# ------------------------------------------------------------
+
+for cmd in git find cp mktemp; do
+    command -v "$cmd" >/dev/null 2>&1 || error "'$cmd' is required but not installed."
 done
 
-# ── Clone / update repo ───────────────────────────────────
+# ------------------------------------------------------------
+# Verify project
+# ------------------------------------------------------------
+
+if ! [[ \
+    -d ".git" || \
+    -f "package.json" || \
+    -f "pyproject.toml" || \
+    -f "requirements.txt" || \
+    -f "Cargo.toml" || \
+    -f "go.mod" || \
+    -f "composer.json" || \
+    -f "pom.xml" ]]; then
+    error "Run this script from your project root."
+fi
+
+info "Project: $(basename "$PWD")"
+
+# ------------------------------------------------------------
+# Clone repo
+# ------------------------------------------------------------
+
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-info "Cloning skills repo …"
-if git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$TMP_DIR" --quiet 2>/dev/null; then
-  success "Repo cloned."
-else
-  error "Failed to clone $REPO_URL — check the URL and your network connection."
-fi
+info "Fetching latest skills..."
 
-# ── Locate skills folder ──────────────────────────────────
-SRC="$TMP_DIR/$SKILLS_SRC_DIR"
-if [[ ! -d "$SRC" ]]; then
-  # Fallback: skill folders may sit at the repo root
-  SRC="$TMP_DIR"
-  warn "No '$SKILLS_SRC_DIR/' folder found — treating repo root as skills source."
-fi
+git clone --depth 1 "$REPO_URL" "$TMP_DIR" >/dev/null \
+    || error "Unable to clone repository."
 
-# ── Prepare destination ───────────────────────────────────
+success "Repository downloaded."
+
+SRC="$TMP_DIR/$SKILLS_SRC"
+
+[[ -d "$SRC" ]] || error "'$SKILLS_SRC' not found in repository."
+
 mkdir -p "$SKILLS_DEST"
-info "Installing skills to: $SKILLS_DEST"
 
-# ── Install each skill ────────────────────────────────────
-installed=0; skipped=0; errors=0
+echo
+info "Installing into:"
+echo "  $PWD/$SKILLS_DEST"
+echo
+
+installed=0
+installed_names=()
 
 while IFS= read -r -d '' skill_dir; do
-  skill_name="$(basename "$skill_dir")"
 
-  # Must contain SKILL.md to count as a valid skill
-  if [[ ! -f "$skill_dir/SKILL.md" ]]; then
-    continue
-  fi
+    skill_name="$(basename "$skill_dir")"
 
-  dest="$SKILLS_DEST/$skill_name"
+    if [[ ! -f "$skill_dir/SKILL.md" ]]; then
+        warn "Skipping '$skill_name' (missing SKILL.md)"
+        continue
+    fi
 
-  # Overwrite existing to ensure latest version
-  if [[ -d "$dest" ]]; then
-    rm -rf "$dest"
-    action="Updated"
-  else
-    action="Installed"
-  fi
+    dest="$SKILLS_DEST/$skill_name"
 
-  if cp -r "$skill_dir" "$dest" 2>/dev/null; then
-    success "$action: $skill_name"
-    ((installed++))
-  else
-    warn "Failed to install: $skill_name"
-    ((errors++))
-  fi
+    if [[ -d "$dest" ]]; then
+        rm -rf "$dest"
+        action="Updated"
+    else
+        action="Installed"
+    fi
+
+    cp -a "$skill_dir" "$dest"
+
+    success "$action → $skill_name"
+
+    installed=$((installed + 1))
+    installed_names+=("$skill_name")
 
 done < <(find "$SRC" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
 
-# ── Summary ───────────────────────────────────────────────
-echo ""
-echo -e "${BOLD}── Install Summary ──────────────────────────${RESET}"
-echo -e "  ${GREEN}Skills installed/updated : $installed${RESET}"
-[[ $errors -gt 0 ]] && echo -e "  ${RED}Errors                   : $errors${RESET}"
-echo -e "  ${CYAN}Skills location          : $SKILLS_DEST${RESET}"
-echo ""
+[[ $installed -gt 0 ]] || error "No valid skills were found."
 
-# ── Verify ────────────────────────────────────────────────
-total="$(find "$SKILLS_DEST" -maxdepth 2 -name "SKILL.md" | wc -l | tr -d ' ')"
-echo -e "${BOLD}$total skill(s) available in Claude Code.${RESET}"
-echo -e "Start a new Claude Code session — skills are picked up automatically.\n"
+# ------------------------------------------------------------
+# Update .gitignore
+# ------------------------------------------------------------
+
+touch .gitignore
+
+if ! grep -qxF ".claude/skills/" .gitignore; then
+    {
+        echo
+        echo "# Claude Code skills"
+        echo ".claude/skills/"
+    } >> .gitignore
+
+    info "Added .claude/skills/ to .gitignore"
+fi
+
+# ------------------------------------------------------------
+# Summary
+# ------------------------------------------------------------
+
+echo
+echo -e "${BOLD}──────────────────────────────────────────${RESET}"
+echo -e "${BOLD}Installation Complete${RESET}"
+echo
+echo "Project : $(basename "$PWD")"
+echo "Installed: $installed skill(s)"
+echo "Location : $PWD/$SKILLS_DEST"
+echo
+
+printf "Skills:\n"
+for skill in "${installed_names[@]}"; do
+    echo "  • $skill"
+done
+
+echo
+success "Done! Start Claude Code in this project."
+echo
